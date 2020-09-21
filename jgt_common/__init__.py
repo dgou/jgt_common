@@ -872,6 +872,58 @@ def check_until(
     raise IncompleteAtTimeoutException(msg, call_result=result, timeout=timeout)
 
 
+@classify("looping")
+def check_while(
+    function_call,
+    should_keep_going,
+    timeout=CHECK_UNTIL_TIMEOUT,
+    cycle_secs=CHECK_UNTIL_CYCLE_SECS,
+    trace=None,
+):
+    """
+    Periodically call a function until its result validates or the timeout is exceeded.
+
+    Args:
+        function_call (function): The function to be called
+        should_keep_going (function): a fn that will accept the output from
+            function_call and return True if the call should continue repeating (still
+            pending a successful result), or False if the checked result is successful.
+        timeout (int): maximum number of seconds to "keep trying" before raising an exception.
+        cycle_secs (int): how long to wait (in seconds) in between calls to function_call.
+        trace (function, optional): a function to call with status messages (takes a single string)
+            or ``None`` if no tracing of the operation of this function is desired.
+            Typical uses might be to pass in the .debug or .info functions from a Python logger.
+
+    Returns:
+        any: the result of function_call when the is_complete_validator returns any True
+            value.
+
+    Raises:
+        jgt_common.IncompleteAtTimeoutException: if function_call's result never
+            satisfies the is_complete_validator before timeout is reached.
+
+    """
+    trace = default_if_none(trace, no_op)
+
+    start_time = _time.time()
+    end_time = start_time + timeout
+
+    while True:
+        result = function_call()
+        if not should_keep_going(result):
+            time_elapsed = round(_time.time() - start_time, 2)
+            debug("Final response achieved in {} seconds".format(time_elapsed))
+            return result
+        if _time.time() > end_time:
+            break
+        _time.sleep(cycle_secs)
+    # If a result wasn't returned from within the while loop,
+    # we have reached timeout without a desdired result.
+    msg = "Response was still pending at timeout."
+    debug(msg)
+    raise IncompleteAtTimeoutException(msg, call_result=result, timeout=timeout)
+
+
 @classify("misc", "exceptions")
 def assert_if_values(format_if_format, error_fun=lambda x: "\n".join(truths_from(x))):
     """

@@ -15,7 +15,8 @@ import jgt_common
 
 
 TEST_MESSAGE = "Test Message"
-CYCLE_ITEMS = [1, 2, 3]
+CYCLE_MIDDLE_ITEM = 2
+CYCLE_ITEMS = [1, CYCLE_MIDDLE_ITEM, 3]
 CYCLE_OF_NUMBERS = cycle(CYCLE_ITEMS)
 CHECK_UNTIL_TIMEOUT = 2
 CHECK_UNTIL_CYCLE_SECS = 0.1
@@ -603,6 +604,18 @@ def test_check_until_never():
         )
         assert e.call_result in CYCLE_ITEMS
         assert e.timeout == CHECK_UNTIL_TIMEOUT
+
+
+def test_check_while():
+    assert (
+        jgt_common.check_while(
+            cycle_func,
+            lambda r: r != CYCLE_MIDDLE_ITEM,
+            timeout=CHECK_UNTIL_TIMEOUT,
+            cycle_secs=CHECK_UNTIL_CYCLE_SECS,
+        )
+        == CYCLE_MIDDLE_ITEM
+    )
 
 
 def test_only_item_of():
